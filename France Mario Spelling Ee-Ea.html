@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mario Spelling Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #2c2c54;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Press Start 2P', monospace;
+  }
+  #game {
+    background: linear-gradient(180deg, #5c94fc 0%, #5c94fc 60%, #48b04a 60%, #48b04a 75%, #8b5e3c 75%, #8b5e3c 100%);
+    width: 420px;
+    min-height: 520px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 4px solid #e8b84b;
+    box-shadow: 0 0 0 4px #a0722a, 0 8px 32px rgba(0,0,0,0.6);
+  }
+
+  /* Clouds */
+  .clouds { position: absolute; top: 20px; left: 0; right: 0; pointer-events: none; }
+  .cloud { position: absolute; background: #fff; border-radius: 20px; opacity: .9; }
+
+  /* Ground decorations */
+  .pipe {
+    width: 28px; height: 36px; background: #3d9a40;
+    border: 2px solid #2a6e2d; border-radius: 2px;
+    position: absolute; bottom: 0;
+  }
+  .pipe::before {
+    content: ''; position: absolute; top: -8px; left: -4px;
+    width: 36px; height: 12px; background: #3d9a40;
+    border: 2px solid #2a6e2d; border-radius: 2px;
+  }
+  .qblock {
+    width: 22px; height: 22px; background: #e8b84b;
+    border: 2px solid #a0722a; border-radius: 2px;
+    position: absolute; display: flex; align-items: center;
+    justify-content: center; font-size: 9px; color: #a0722a; font-weight: 700;
+  }
+
+  /* Score bar */
+  .score-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,.5); border-radius: 8px;
+    padding: 6px 12px; margin-bottom: 10px; color: #fff; font-size: 7px;
+  }
+  .lives { color: #ff6b6b; }
+  .mario-sprite { font-size: 20px; animation: run 1s steps(1) infinite; }
+  @keyframes run {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(-1); }
+  }
+  .word-counter { color: #aef; font-size: 7px; }
+
+  /* Progress bar */
+  .progress-bar { background: rgba(0,0,0,.4); border-radius: 4px; height: 8px; margin: 4px 0; }
+  .progress-fill { background: #e8b84b; height: 100%; border-radius: 4px; transition: width .4s; }
+
+  /* Stage area */
+  .stage-area {
+    background: rgba(0,0,0,.3); border-radius: 10px;
+    padding: 10px; text-align: center; margin-bottom: 8px;
+  }
+  .picture-box {
+    width: 100px; height: 100px; margin: 0 auto 8px;
+    background: #fff; border: 3px solid #e8b84b; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px; position: relative; box-shadow: 0 4px 0 #b8860b;
+  }
+  .hint-text { color: #ffe066; font-size: 7px; margin-bottom: 6px; }
+  .word-slots { display: flex; justify-content: center; gap: 5px; margin: 6px 0; }
+  .slot {
+    width: 28px; height: 28px; border-bottom: 3px solid #e8b84b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #fff; text-transform: uppercase; min-width: 28px;
+  }
+  .slot.filled { color: #ffe066; text-shadow: 0 0 6px #ffe066; }
+  .slot.correct { color: #5dfc8d; border-bottom-color: #5dfc8d; animation: bounce .3s ease; }
+  .slot.wrong { color: #ff6b6b; border-bottom-color: #ff6b6b; animation: shake .3s ease; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
+
+  /* Letter buttons */
+  .letters-area {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 5px; margin: 8px 0;
+  }
+  .letter-btn {
+    width: 32px; height: 32px; background: #e8b84b; border: none;
+    border-radius: 4px; font-family: 'Press Start 2P', monospace;
+    font-size: 10px; cursor: pointer; color: #3d1a00; font-weight: 700;
+    box-shadow: 0 3px 0 #a0722a; transition: transform .1s; text-transform: uppercase;
+  }
+  .letter-btn:hover { background: #ffd166; transform: translateY(-2px); }
+  .letter-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #a0722a; }
+  .letter-btn.used { background: #555; color: #888; box-shadow: 0 3px 0 #333; cursor: not-allowed; }
+
+  /* Control buttons */
+  .ctrl-btns { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+  .ctrl-btn {
+    background: #e74c3c; border: none; border-radius: 4px;
+    font-family: 'Press Start 2P', monospace; font-size: 7px;
+    color: #fff; padding: 7px 10px; cursor: pointer; box-shadow: 0 3px 0 #a01a1a;
+  }
+  .ctrl-btn.green { background: #27ae60; box-shadow: 0 3px 0 #145a32; }
+  .ctrl-btn.purple { background: #8e44ad; box-shadow: 0 3px 0 #5b2c6f; }
+  .ctrl-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 #333; }
+
+  /* Overlays */
+  .result-overlay {
+    display: none; position: absolute; inset: 0;
+    background: rgba(0,0,0,.75); align-items: center;
+    justify-content: center; flex-direction: column;
+    gap: 12px; border-radius: 12px; z-index: 20;
+  }
+  .result-overlay.show { display: flex; }
+  .result-title {
+    font-size: 16px; color: #ffe066;
+    text-shadow: 2px 2px 0 #a0722a; text-align: center;
+  }
+  .result-sub { font-size: 9px; color: #fff; text-align: center; }
+
+  /* Floating stars */
+  .star {
+    position: absolute; color: #ffe066; font-size: 20px;
+    pointer-events: none; animation: floatUp 1s ease forwards;
+  }
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <!-- Clouds -->
+  <div class="clouds">
+    <div class="cloud" style="width:60px;height:22px;left:5%;top:10px"></div>
+    <div class="cloud" style="width:40px;height:16px;left:8%;top:18px"></div>
+    <div class="cloud" style="width:70px;height:25px;left:45%;top:8px"></div>
+    <div class="cloud" style="width:45px;height:18px;left:48%;top:16px"></div>
+    <div class="cloud" style="width:55px;height:20px;left:75%;top:12px"></div>
+    <div class="cloud" style="width:35px;height:14px;left:78%;top:20px"></div>
+  </div>
+
+  <!-- Ground decorations -->
+  <div class="pipe" style="left:10px"></div>
+  <div class="pipe" style="right:10px"></div>
+  <div class="qblock" style="left:40%;top:38px">?</div>
+  <div class="qblock" style="left:55%;top:38px">?</div>
+
+  <!-- Score bar -->
+  <div class="score-bar">
+    <div>SCORE: <span id="score">0</span></div>
+    <div class="mario-sprite">🍄</div>
+    <div class="lives">❤️<span id="lives">3</span></div>
+    <div class="word-counter"><span id="wnum">1</span>/11</div>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="background:rgba(0,0,0,.4);border-radius:6px;padding:4px 8px;margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="color:#aef;font-size:7px">PROGRESS</span>
+      <span style="color:#ffe066;font-size:7px" id="prog-txt">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage-area">
+    <div class="picture-box"><span id="pic-emoji" style="font-size:52px">🐝</span></div>
+    <div class="hint-text" id="hint-text">What do you see? Spell it!</div>
+    <div class="word-slots" id="word-slots"></div>
+  </div>
+
+  <!-- Letters -->
+  <div class="letters-area" id="letters-area"></div>
+
+  <!-- Controls -->
+  <div class="ctrl-btns">
+    <button class="ctrl-btn" onclick="deleteLast()">⬅ DEL</button>
+    <button class="ctrl-btn green" onclick="checkAnswer()">CHECK ✓</button>
+    <button class="ctrl-btn purple" onclick="skipWord()">SKIP ⏭</button>
+  </div>
+
+  <!-- Correct overlay -->
+  <div class="result-overlay" id="result-overlay">
+    <div class="result-title" id="result-title">CORRECT!</div>
+    <div style="font-size:32px" id="result-emoji">⭐</div>
+    <div class="result-sub" id="result-sub"></div>
+    <button class="ctrl-btn green" onclick="nextWord()" style="margin-top:8px;padding:10px 20px">NEXT ▶</button>
+  </div>
+
+  <!-- Game over overlay -->
+  <div class="result-overlay" id="gameover-overlay">
+    <div class="result-title" style="color:#ff6b6b">GAME OVER!</div>
+    <div style="font-size:32px">😵</div>
+    <div class="result-sub" id="final-score-txt"></div>
+    <button class="ctrl-btn green" onclick="restartGame()" style="margin-top:8px;padding:10px 20px">PLAY AGAIN ▶</button>
+  </div>
+
+  <!-- Win overlay -->
+  <div class="result-overlay" id="win-overlay">
+    <div class="result-title">YOU WIN!! 🎊</div>
+    <div style="font-size:32px">⭐⭐⭐</div>
+    <div class="result-sub" id="win-score-txt"></div>
+    <button class="ctrl-btn green" onclick="restartGame()" style="margin-top:8px;padding:10px 20px">PLAY AGAIN ▶</button>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  { word: 'bee',   emoji: '🐝', hint: 'A buzzing insect that makes honey' },
+  { word: 'tree',  emoji: '🌳', hint: 'A tall plant with a trunk and leaves' },
+  { word: 'three', emoji: '3️⃣', hint: 'The number after two' },
+  { word: 'sleep', emoji: '😴', hint: 'What you do at night in bed' },
+  { word: 'sheep', emoji: '🐑', hint: 'A woolly farm animal' },
+  { word: 'seed',  emoji: '🌱', hint: 'A tiny thing plants grow from' },
+  { word: 'feet',  emoji: '🦶', hint: 'The bottom parts of your legs' },
+  { word: 'meat',  emoji: '🥩', hint: 'Food from animals' },
+  { word: 'seal',  emoji: '🦭', hint: 'A marine animal that claps flippers' },
+  { word: 'leaf',  emoji: '🍃', hint: 'The flat green part of a plant' },
+  { word: 'tea',   emoji: '🍵', hint: 'A hot drink made by steeping leaves' }
+];
+
+// ─── Web Audio ───────────────────────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let ctx = null;
+
+function getCtx() { if (!ctx) ctx = new AudioCtx(); return ctx; }
+
+function playTone(freq, dur, type = 'square', vol = 0.15) {
+  try {
+    const a = getCtx();
+    const osc = a.createOscillator();
+    const g   = a.createGain();
+    osc.connect(g); g.connect(a.destination);
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(vol, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+    osc.start(); osc.stop(a.currentTime + dur);
+  } catch(e) {}
+}
+
+function playCoin()    { playTone(988, 0.1, 'square', 0.2); setTimeout(() => playTone(1319, 0.15, 'square', 0.2), 80); }
+function playCorrect() { [523,659,784,1047].forEach((f,i) => setTimeout(() => playTone(f, 0.15, 'square', 0.25), i * 80)); }
+function playWrong()   { playTone(200, 0.3, 'sawtooth', 0.2); setTimeout(() => playTone(150, 0.3, 'sawtooth', 0.15), 150); }
+function playGameOver(){ [392,349,330,294,262].forEach((f,i) => setTimeout(() => playTone(f, 0.25, 'square', 0.2), i * 120)); }
+function playLevelUp() { [523,659,784,1047,1319].forEach((f,i) => setTimeout(() => playTone(f, 0.12, 'square', 0.2), i * 70)); }
+
+function playBgMusic() {
+  const notes = [
+    {f:659,d:.15},{f:659,d:.15},{f:0,d:.1},{f:659,d:.15},
+    {f:0,d:.1},{f:523,d:.15},{f:659,d:.15},{f:784,d:.3},
+    {f:0,d:.3},{f:392,d:.3},{f:0,d:.3}
+  ];
+  let t = 0;
+  notes.forEach(n => {
+    if (n.f > 0) setTimeout(() => playTone(n.f, n.d + .05, 'square', .08), t * 1000);
+    t += n.d + .05;
+  });
+}
+
+// ─── Game State ──────────────────────────────────────────────────────────────
+let shuffled = [], current = 0, score = 0, lives = 3, typed = [], usedIndices = [], checking = false;
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - .5); }
+
+function buildLetters(word) {
+  const extra = 'aeioubcdfghjklmnpqrstvwxyz';
+  let pool = word.split('');
+  const needed = Math.max(10, word.length + 5);
+  let ei = 0;
+  while (pool.length < needed) { pool.push(extra[ei % extra.length]); ei++; }
+  return shuffle(pool);
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function renderSlots() {
+  const w  = shuffled[current].word;
+  const el = document.getElementById('word-slots');
+  el.innerHTML = '';
+  for (let i = 0; i < w.length; i++) {
+    const s = document.createElement('div');
+    s.className = 'slot' + (typed[i] ? ' filled' : '');
+    if (typed[i]) s.textContent = typed[i];
+    el.appendChild(s);
+  }
+}
+
+function renderLetters() {
+  const el   = document.getElementById('letters-area');
+  const pool = shuffled[current]._pool;
+  el.innerHTML = '';
+  pool.forEach((l, i) => {
+    const b = document.createElement('button');
+    b.className = 'letter-btn' + (usedIndices.includes(i) ? ' used' : '');
+    b.textContent = l;
+    b.onclick = () => pressLetter(l, i);
+    el.appendChild(b);
+  });
+}
+
+function updateProgress() {
+  const p = Math.round((current / shuffled.length) * 100);
+  document.getElementById('prog-fill').style.width = p + '%';
+  document.getElementById('prog-txt').textContent   = p + '%';
+}
+
+function loadWord() {
+  const wd = shuffled[current];
+  wd._pool = buildLetters(wd.word);
+  typed = []; usedIndices = [];
+  document.getElementById('pic-emoji').textContent  = wd.emoji;
+  document.getElementById('hint-text').textContent  = wd.hint;
+  document.getElementById('wnum').textContent       = current + 1;
+  renderSlots(); renderLetters(); updateProgress();
+}
+
+// ─── Interaction ─────────────────────────────────────────────────────────────
+function pressLetter(l, idx) {
+  if (checking || usedIndices.includes(idx)) return;
+  const w = shuffled[current].word;
+  if (typed.length >= w.length) return;
+  playCoin();
+  typed.push(l); usedIndices.push(idx);
+  renderSlots(); renderLetters();
+  if (typed.length === w.length) setTimeout(checkAnswer, 200);
+}
+
+function deleteLast() {
+  if (checking || typed.length === 0) return;
+  usedIndices.pop(); typed.pop();
+  renderSlots(); renderLetters();
+}
+
+function checkAnswer() {
+  if (checking || typed.length === 0) return;
+  const w       = shuffled[current].word;
+  const attempt = typed.join('').toLowerCase();
+  if (attempt.length < w.length) return;
+  checking = true;
+  if (attempt === w) {
+    score += w.length * 10;
+    document.getElementById('score').textContent = score;
+    playCorrect(); spawnStars(); showResult(true);
+  } else {
+    lives--;
+    document.getElementById('lives').textContent = lives;
+    playWrong(); flashSlots('wrong');
+    setTimeout(() => {
+      if (lives <= 0) { endGame(false); }
+      else { typed = []; usedIndices = []; checking = false; renderSlots(); renderLetters(); }
+    }, 800);
+  }
+}
+
+function flashSlots(cls) {
+  const slots = document.querySelectorAll('.slot');
+  slots.forEach(s => s.classList.add(cls));
+  setTimeout(() => slots.forEach(s => s.classList.remove(cls)), 600);
+}
+
+function showResult(win) {
+  const ov = document.getElementById('result-overlay');
+  document.getElementById('result-title').textContent = 'CORRECT! +' + shuffled[current].word.length * 10;
+  document.getElementById('result-emoji').textContent = '⭐';
+  document.getElementById('result-sub').textContent   = 'The word is: ' + shuffled[current].word.toUpperCase();
+  ov.classList.add('show');
+}
+
+function nextWord() {
+  document.getElementById('result-overlay').classList.remove('show');
+  checking = false; current++;
+  if (current >= shuffled.length) { endGame(true); }
+  else { loadWord(); }
+}
+
+function skipWord() {
+  if (checking) return;
+  lives = Math.max(0, lives - 1);
+  document.getElementById('lives').textContent = lives;
+  if (lives <= 0) { endGame(false); return; }
+  current++;
+  if (current >= shuffled.length) { endGame(true); }
+  else { typed = []; usedIndices = []; checking = false; loadWord(); }
+}
+
+function spawnStars() {
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => {
+      const s = document.createElement('div');
+      s.className = 'star'; s.textContent = '⭐';
+      s.style.left = (60 + Math.random() * 200) + 'px';
+      s.style.top  = (120 + Math.random() * 80)  + 'px';
+      document.getElementById('game').appendChild(s);
+      setTimeout(() => s.remove(), 1000);
+    }, i * 100);
+  }
+}
+
+function endGame(win) {
+  if (win) {
+    playLevelUp();
+    document.getElementById('win-score-txt').textContent = 'Final Score: ' + score + ' pts';
+    document.getElementById('win-overlay').classList.add('show');
+  } else {
+    playGameOver();
+    document.getElementById('final-score-txt').textContent = 'Final Score: ' + score + ' pts';
+    document.getElementById('gameover-overlay').classList.add('show');
+  }
+}
+
+function restartGame() {
+  document.getElementById('gameover-overlay').classList.remove('show');
+  document.getElementById('win-overlay').classList.remove('show');
+  document.getElementById('result-overlay').classList.remove('show');
+  score = 0; lives = 3; current = 0; typed = []; usedIndices = []; checking = false;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('lives').textContent  = 3;
+  shuffled = shuffle(WORDS);
+  loadWord();
+  setTimeout(playBgMusic, 300);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+document.getElementById('game').addEventListener('click', () => {
+  if (!ctx) { try { getCtx(); playBgMusic(); } catch(e) {} }
+}, { once: true });
+
+shuffled = shuffle(WORDS);
+loadWord();
+setTimeout(playBgMusic, 500);
+</script>
+</body>
+</html>
